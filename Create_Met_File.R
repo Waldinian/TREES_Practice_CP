@@ -2,6 +2,11 @@
 # Takes data from Chimney Park in 2019 in converts it into a format that is readable by create_driver_file_CP.R.
 # Author: Alex Fox, afox18@uwyo.edu
 
+# todo:
+# gap fill data (crudely)
+# exise all the bad data (like when the IRGA fucks up)
+# set a realistic window (like july and august)
+
 library(tidyverse)
 library(ggplot2)
 library(lubridate)
