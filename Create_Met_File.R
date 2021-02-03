@@ -49,20 +49,20 @@ Combine <- function(A.raw, B.raw){
   full.raw.long <- full_join(by = "TIMESTAMP", A.raw, B.raw) # keep all values
 } 
 
-All_Data.raw <- Combine(Combine(SoilHF.raw, Precip.raw), Met.raw)
+All_Data.raw <- Combine(Combine(SoilHF.raw, Precip.raw), Met.raw) %>% 
+  mutate(BaPress_kPa = 72.4)  # didn't look for a pressure gauge, but maybe there is one?
 
 # test plots for QA/QC
-SoilHF.filtered <- SoilHF.raw[seq(1, length(SoilHF.raw$TIMESTAMP), 48), ]  # plot once a day
-SoilTest.Plot <- ggplot(data = SoilHF.filtered, size=0.01) +
+SoilTest.Plot <- ggplot(data = All_Data.raw, size=0.01) +
   geom_line(mapping = aes(x=TIMESTAMP, y=SoilT_PitA_5_Avg,), color='blue')+
   geom_line(mapping = aes(x=TIMESTAMP, y=SoilT_PitA_15_Avg), color='red')
 # SoilTest.Plot
 
-PrecipTest.Plot <- ggplot(data = Precip.raw)+
+PrecipTest.Plot <- ggplot(data = All_Data.raw)+
   geom_col(mapping=aes(x=TIMESTAMP, y=Rain_mm_Tot))
 # PrecipTest.Plot
 
-MetTest.Plot <- ggplot(data = Met.raw)+
+MetTest.Plot <- ggplot(data = All_Data.raw)+
   geom_point(mapping = aes(x=TIMESTAMP, y=AirT_6m_Avg), size = 0.5)
 # MetTest.Plot
 
@@ -78,49 +78,97 @@ MetTest.Plot <- ggplot(data = Met.raw)+
 # then feed that file into the create_driver_file.R script
 
 # Weather2013Part.csv columns:
-Year = year(SoilHF.raw$TIMESTAMP)
-DOY = yday(SoilHF.raw$TIMESTAMP)
-TIMESTAMP = SoilHF.raw$TIMESTAMP
-AirTemp_C <- Met.raw$AirT_6m_Avg
-ggplot() + geom_line(mapping = aes(x=TIMESTAMP, y=AirTemp_C))
+Year = year(All_Data.raw$TIMESTAMP)
+DOY = yday(All_Data.raw$TIMESTAMP)
+TIMESTAMP = All_Data.raw$TIMESTAMP
+AirTemp_C <- All_Data.raw$AirT_6m_Avg
 
-RH_fraction <- Met.raw$RH_6m/100
+AirTemp.Plot <- ggplot() + geom_line(mapping = aes(x=TIMESTAMP, y=AirTemp_C))
+# AirTemp.Plot
 
+RH_fraction <- All_Data.raw$RH_6m/100
 Vap_Press_kPa <- RH_fraction*0.6108*exp(17.27*T/(T + 237.3))
-ggplot() +
-  geom_point(aes(x=Met.raw$TIMESTAMP, y=Vap_Press_kPa), size = 0.1)
+Vap_Press.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=Vap_Press_kPa), size = 0.1)
+# Vap_Press.Plot
 
-Qpar <- Met.raw$PAR_dn_Avg  # incoming PAR
-ggplot()+
-  geom_point(aes(x=Met.raw$TIMESTAMP, y=Qpar), size=0.1)
+Qpar <- All_Data.raw$PAR_dn_Avg  # incoming PAR
+Qpar.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=Qpar), size=0.1)
+# Qpar.Plot
 
-WindSpeed_m_s <- Met.raw$WS_2m_Avg
-ggplot() +
-  geom_point(aes(x=Met.raw$TIMESTAMP, y=WindSpeed_m_s), size = 0.1)
+WindSpeed_m_s <- All_Data.raw$WS_2m_Avg
+WS.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=WindSpeed_m_s), size = 0.1)
+# WS.Plot
 
-WindDir_Deg <- Met.raw$WD_2m
-ggplot() +
-  geom_point(aes(x = Met.raw$TIMESTAMP, y = WindDir_Deg, color = Met.raw$TIMESTAMP), size = 0.1)+
-  coord_polar(theta = "y")
+WindDir_Deg <- All_Data.raw$WD_2m
+WD.Plot <- ggplot() + geom_point(aes(x = WindSpeed_m_s, y = WindDir_Deg, color = hour(TIMESTAMP)), size = 0.8, alpha = 0.5) + coord_polar(theta = "y")
+# WD.Plot  # very cool plot, can see a slight bias to the West
 
-Rain_Tot <- Precip.raw$Rain_mm_Tot
+Rain_Tot <- All_Data.raw$Rain_mm_Tot
 
-SoilTemp_5cm_C <- SoilHF.raw %>%
+SoilTemp_5cm_C <- All_Data.raw %>%
+  pivot_longer(-TIMESTAMP, names_to = "pit", values_to = "temp") %>%  # longify
+  filter(pit == "SoilT_PitA_5_Avg" | 
+           pit == "SoilT_PitB_5_Avg" | 
+           pit == "SoilT_PitC_5_Avg" | 
+           pit == "SoilT_PitD_5_Avg") %>%   # want the 5cm soil pits
+  group_by(TIMESTAMP) %>%  # so that we can average all four soil pits in one timestamp
+  summarize(temp = mean(temp, na.rm = TRUE))  # take the mean of all four soil pits at one timestamp
+SoilTemp_5cm_C <- SoilTemp_5cm_C$temp
+Soil5.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=SoilTemp_5cm_C), size = 0.1)
+# Soil5.Plot
+
+SoilTemp_15cm_C <- All_Data.raw %>%
   pivot_longer(-TIMESTAMP, names_to = "pit", values_to = "temp") %>%
-  filter(pit == "SoilT_PitA_5_Avg" | pit == "SoilT_PitB_5_Avg" | pit == "SoilT_PitC_5_Avg" | pit == "SoilT_PitD_5_Avg") %>% 
-  group_by(TIMESTAMP) %>%
-  summarize(temp = mean(temp, na.rm = TRUE))
-SoilTemp_5cm_C <-  SoilTemp_5cm_C$temp
-
-SoilTemp_15cm_C <- SoilHF.raw %>%
-  pivot_longer(-TIMESTAMP, names_to = "pit", values_to = "temp") %>%
-  filter(pit == "SoilT_PitA_15_Avg" | pit == "SoilT_PitB_15_Avg" | pit == "SoilT_PitC_15_Avg" | pit == "SoilT_PitD_15_Avg") %>% 
-  group_by(TIMESTAMP) %>% 
-  summarize(temp = mean(temp, na.rm = TRUE))
+  filter(pit == "SoilT_PitA_15_Avg" | 
+           pit == "SoilT_PitB_15_Avg" | 
+           pit == "SoilT_PitC_15_Avg" | 
+           pit == "SoilT_PitD_15_Avg") %>%  # want the 15cm pits
+  group_by(TIMESTAMP) %>%  #same as above chunk
+  summarize(temp = mean(temp, na.rm = TRUE))  # same as above chunk
 SoilTemp_15cm_C <-  SoilTemp_15cm_C$temp
+Soil15.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=SoilTemp_15cm_C), size = 0.1)
+# Soil15.Plot
 
-# BaPress_kPa
+BaPress_kPa <- All_Data.raw$BaPress_kPa
 
-forDriver <- data.frame(Year, DOY, TIMESTAMP, AirTemp_C, RH_fraction, Vap_Press_kPa, Qpar, WindSpeed_m_s, WindDir_Deg, Rain_Tot, SoilTemp_5cm_C, SoilTemp_15cm_C)
+weather <- data.frame(Year, DOY, TIMESTAMP, AirTemp_C, RH_fraction, Vap_Press_kPa, Qpar, WindSpeed_m_s, WindDir_Deg, Rain_Tot, SoilTemp_5cm_C, SoilTemp_15cm_C, BaPress_kPa)
 
+#################
+# Now we can build the actual driver file
+#################
+
+
+#TREES dates appear as YEARDAY, e.g. 2021001 for January 1, 2021
+weather$date <- as.matrix((weather$Year*1000) + (weather$DOY))
+
+weather$TIMESTAMP <- paste(substr(weather$TIMESTAMP,1,10), substr(weather$TIMESTAMP,12,19)) # for some reason, the TIMESTAMP entries got all screwed up
+
+nrows <- length(weather$date)
+treesMet <- array(data=0,dim=c(nrows,18))
+colnames(treesMet)<-c("Date","Time","u_ref","t_ref","d_ref","precip","Qpar","t_canopy","d_canopy",
+                      "p_atm","CO2_atm","Ts0","Tsurf","Troot","Zw","xylemScalar","NEEobs","Ec")
+treesMet <- as_tibble(treesMet)
+
+treesMet <- treesMet %>% 
+  mutate(Date = weather$date,
+         Time = hour(weather$TIMESTAMP) + minute(weather$TIMESTAMP)/60,
+         u_ref = if_else(weather$WindSpeed_m_s < 0.01, 0.01, weather$WindSpeed_m_s),
+         t_ref = weather$AirTemp_C,
+         d_ref = (1 - weather$RH_fraction)*0.61094*exp(17.625*t_ref/(t_ref+243.04)),  # saturation vapor pressure
+         precip = weather$Rain_Tot,
+         Qpar = weather$Qpar,
+         t_canopy = t_ref,  # no canopy obs., so just use t_ref
+         d_canopy = d_ref,  # same
+         p_atm = weather$BaPress_kPa,
+         CO2_atm <- 400,  # USE THE FLUX DATA
+         Ts0 = 0.5*(weather$SoilTemp_5cm_C + t_canopy),  # don't have soil surface, so use an average of 5cm and air
+         Tsurf = weather$SoilTemp_5cm_C,
+         Troot = weather$SoilTemp_15cm_C,
+         Zw = -10,  # unreachable water table
+         xylenScalar = 1,  # can be used to manipulate hydraulics. Default 1. 0.99 resets min. xylem pressures to sol water pressurem and remove memory of past droughts
+         NEEobs = -999,  # legacy column for use with MCMC algorithm
+         Ec = -999  # same
+  )
+
+write_delim(treesMet, "treesMet.txt", sep = "\t")
 

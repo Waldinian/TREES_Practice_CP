@@ -35,62 +35,30 @@
 #ETo-Daily	
 #Rain-Daily
 #
-setwd(paste("~/Work/UWyo/2021 Spring/TREES Workshops/",sep=""))
-subfolder <- "Examples/Maize/"
-weather<-read.csv(paste(subfolder,"weather2013part",".csv",sep=""),header=TRUE)
 
-#
+library(tidyverse)
+
+weather<-read.csv("CP_Met_For_Driver.csv", stringsAsFactors = FALSE)
+
 #TREES dates appear as YEARDAY, e.g. 2021001 for January 1, 2021
-#
-weather$date <- as.matrix((weather$Year*1000)+(weather$DOY))
+weather$date <- as.matrix((weather$Year*1000) + (weather$DOY))
 
-#
-#The input file has hourly data and TREES needs it to be half-hourly
-#    so we will double the length of the records and use the average
-#    of two consecutive hours of data to interpolate the half-hour values
-#
+weather$TIMESTAMP <- paste(substr(weather$TIMESTAMP,1,10), substr(weather$TIMESTAMP,12,19)) # for some reason, the TIMESTAMP entries got all screwed up
+
 nrows0 <- length(weather$date)
-nrows <- nrows0*2
+nrows <- length(weather$date)
 treesMet <- array(data=0,dim=c(nrows,18))
 colnames(treesMet)<-c("Date","Time","u_ref","t_ref","d_ref","precip","Qpar","t_canopy","d_canopy",
                       "p_atm","CO2_atm","Ts0","Tsurf","Troot","Zw","xylemScalar","NEEobs","Ec")
+treesMet <- as_tibble(treesMet)
 
-#Maintain a 24-hour clock in time
-time <- 0
-
-for (i in 1:nrows0){
-#counters for the output treesMet array
-  i1 <- i*2-1
-  i2 <- i*2
-#Date
-  treesMet[i1,"Date"] <- weather[i,"date"]
-  treesMet[i2,"Date"] <- weather[i,"date"]
-#Time is in hours in half-hour increment, e.g. 0.0, 0.5, 1.0, ..., 23.5 
-  treesMet[i1,"Time"] <- time
-  treesMet[i2,"Time"] <- time + 0.5
-  time <- time + 1
-  if (time == 24) time = 0
-#u_ref in ms-1
-  treesMet[i1,"u_ref"] <- weather[i,"WindSpeed_m_s.1"]
-  if (i < nrows0)
-  {
-    treesMet[i2,"u_ref"] <- 0.5*(weather[i,"WindSpeed_m_s.1"]+weather[i+1,"WindSpeed_m_s.1"])
-  }
-  else
-  {
-    treesMet[i2,"u_ref"] <- weather[i,"WindSpeed_m_s.1"]
-  }
-  if (treesMet[i2,"u_ref"] < 0.01) treesMet[i2,"u_ref"] = 0.01
-#t_ref in degrees C
-  treesMet[i1,"t_ref"] <- weather[i,"AirTemp_C"]
-  if (i < nrows0)
-  {
-    treesMet[i2,"t_ref"] <- 0.5*(weather[i,"AirTemp_C"]+weather[i+1,"AirTemp_C"])
-  }
-  else
-  {
-    treesMet[i2,"t_ref"] <- weather[i,"AirTemp_C"]
-  }
+treesMet <- treesMet %>% 
+  mutate(Date = weather$date,
+         Time = hour(weather$TIMESTAMP) + minute(weather$TIMESTAMP)/60,
+         u_ref = if_else(weather$WindSpeed_m_s < 0.01, 0.01, weather$WindSpeed_m_s),
+         t_ref = weather$AirTemp_C,
+         airT = weather$AirTemp_C,
+         svp = (1 - weather$RH_fraction)*0.61094*exp(17.625*airT/(airT+243.04)))
 #d_ref is vapor pressure deficit in kPa
   airT <- weather[i,"AirTemp_C"]
   svp <- (1-weather[i,"RH_fraction"])*0.61094*exp(17.625*airT/(airT+243.04))
