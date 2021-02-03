@@ -10,6 +10,7 @@ library(lubridate)
 SoilHF.files <- Sys.glob(Sys.glob('/Volumes/TempData/Bretfeld\ Mario/Chimney/Data/BB-SF/SoilHF/2019*/*SoilData_BBSF*.dat'))
 Precip.files <- Sys.glob(Sys.glob('/Volumes/TempData/Bretfeld\ Mario/Chimney/Data/BB-SF/SoilHF/2019*/*MetData_BBSF*.dat'))
 Met.files <- Sys.glob(Sys.glob("/Volumes/TempData/Bretfeld\ Mario/Chimney/Data/BB-SF/EC/7m/2019*/Converted/TOA5_9810.Met30Min.dat"))
+Flux.files <- Sys.glob(Sys.glob("/Volumes/TempData/Bretfeld\ Mario/Chimney/Data/BB-SF/EC/7m/2019*/Converted/TOA5_9810.Flux30Min.dat"))
 
 # given a list of file names, collect all the data from those files into one dataframe
 Collect_Data <- function(.files){
@@ -41,6 +42,7 @@ Collect_Data <- function(.files){
 SoilHF.raw <- Collect_Data(SoilHF.files)
 Precip.raw <- Collect_Data(Precip.files)
 Met.raw <- Collect_Data(Met.files[13:length(Met.files)])  # files have inconsistent variable names until the 13th file, so start there
+Flux.raw <- Collect_Data(Flux.files)
 
 # filter(as.numeric(as.POSIXct(TIMESTAMP)) >= as.numeric(as.POSIXct("2019-05-19 13:30:00")))  # filter out times before 20190519 13:30, since that's when Met.raw starts
 
@@ -49,7 +51,7 @@ Combine <- function(A.raw, B.raw){
   full.raw.long <- full_join(by = "TIMESTAMP", A.raw, B.raw) # keep all values
 } 
 
-All_Data.raw <- Combine(Combine(SoilHF.raw, Precip.raw), Met.raw) %>% 
+All_Data.raw <- Combine(Combine(Combine(SoilHF.raw, Precip.raw), Met.raw), Flux.raw) %>% 
   mutate(BaPress_kPa = 72.4)  # didn't look for a pressure gauge, but maybe there is one?
 
 # test plots for QA/QC
@@ -131,7 +133,11 @@ Soil15.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=SoilTemp_15cm_C), size =
 
 BaPress_kPa <- All_Data.raw$BaPress_kPa
 
-weather <- data.frame(Year, DOY, TIMESTAMP, AirTemp_C, RH_fraction, Vap_Press_kPa, Qpar, WindSpeed_m_s, WindDir_Deg, Rain_Tot, SoilTemp_5cm_C, SoilTemp_15cm_C, BaPress_kPa)
+CO2_atm <- All_Data.raw$rho_c_LI7500_Avg
+
+weather <- data.frame(Year, DOY, TIMESTAMP, AirTemp_C, RH_fraction, Vap_Press_kPa, Qpar, WindSpeed_m_s, WindDir_Deg, Rain_Tot, SoilTemp_5cm_C, SoilTemp_15cm_C, BaPress_kPa, CO2_atm)
+
+
 
 #################
 # Now we can build the actual driver file
@@ -160,7 +166,7 @@ treesMet <- treesMet %>%
          t_canopy = t_ref,  # no canopy obs., so just use t_ref
          d_canopy = d_ref,  # same
          p_atm = weather$BaPress_kPa,
-         CO2_atm <- 400,  # USE THE FLUX DATA
+         CO2_atm = weather$CO2_atm,
          Ts0 = 0.5*(weather$SoilTemp_5cm_C + t_canopy),  # don't have soil surface, so use an average of 5cm and air
          Tsurf = weather$SoilTemp_5cm_C,
          Troot = weather$SoilTemp_15cm_C,
@@ -170,5 +176,5 @@ treesMet <- treesMet %>%
          Ec = -999  # same
   )
 
-write_delim(treesMet, "treesMet.txt", sep = "\t")
+write_delim(treesMet, "treesMet.txt", delim = "\t")
 
