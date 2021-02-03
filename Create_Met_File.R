@@ -278,7 +278,7 @@ for (col in 1:length(treesMet)){  # loop over columns
   }
 }
 
-write_delim(treesMet, "treesMet.txt", delim = "\t")
+write_delim(treesMet, "treesMet_BBSF_2019212_2019245.txt", delim = "\t")
 
 # some quick QA/QC
 
