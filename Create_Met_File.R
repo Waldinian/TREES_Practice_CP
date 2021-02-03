@@ -231,7 +231,7 @@ treesMet <- treesMet %>%
          Tsurf = weather$SoilTemp_5cm_C,
          Troot = weather$SoilTemp_15cm_C,
          Zw = -10,  # unreachable water table
-         xylenScalar = 1,  # can be used to manipulate hydraulics. Default 1. 0.99 resets min. xylem pressures to sol water pressurem and remove memory of past droughts
+         xylemScalar = 1,  # can be used to manipulate hydraulics. Default 1. 0.99 resets min. xylem pressures to sol water pressurem and remove memory of past droughts
          NEEobs = -999,  # legacy column for use with MCMC algorithm
          Ec = -999  # same
   )
