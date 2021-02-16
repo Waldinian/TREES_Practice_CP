@@ -46,8 +46,10 @@ BBSF <- full_join(by = "ti", BBSF_Dead, BBSF_Pinon) %>%  # keep all values
          key = substr(key, 1, nchar(key) - 2))
 
 ggplot(data=filter(BBSF, key=="Asun")) +
-  geom_line(aes(x=ti,y=val, color=Params), size=0.3)
+  geom_line(aes(x=ti,y=val, color=Params), size=0.3) +
+  scale_x_datetime(limits = ymd_hms(c("2019-08-05 00:00:00", "2019-08-12 00:00:00")))
 
 ggplot(data=filter(BBSF, key=="NEE")) +
   geom_line(aes(x=ti,y=val, color=Params), size=0.3) +
-  ylim(0,20)
+  ylim(0,20) +
+  scale_x_datetime(limits = ymd_hms(c("2019-08-05 00:00:00", "2019-08-12 00:00:00")))
