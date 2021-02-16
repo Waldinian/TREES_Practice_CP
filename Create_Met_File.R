@@ -11,7 +11,7 @@ library(tidyverse)
 library(ggplot2)
 library(lubridate)
 
-setwd("~/Work/UWyo/2021 Spring/TREES Workshops/Examples/CP_2019")
+setwd("~/Work/UWyo/2021 Spring/TREES Workshops/Examples/BBSF_Test/")
 
 # AmeriFlux variable names: 
 # https://ameriflux.lbl.gov/data/aboutdata/data-variables/
@@ -32,10 +32,9 @@ setwd("~/Work/UWyo/2021 Spring/TREES Workshops/Examples/CP_2019")
 # PA_1_1_1 -> BaPress_kPa
 # CO2_1_1_1 -> CO2_atm
 
-###################################################################################################
-# This Part of the Program aggregates the data. However, if you don't have access to the PETA     #
-# library, you can skip this code and go down the line that loads "BBSF_2019_All_Weather.csv"     #
-###################################################################################################
+#################################################
+# This Part of the Program aggregates the data. #
+#################################################
 
 
 # Path to soils data and Precip data, stored on the UWyo PETA library
@@ -83,7 +82,8 @@ Flux.raw <- read.csv(Flux.files, stringsAsFactors = FALSE, na = c("","NAN", "NaN
                                  substr(TIMESTAMP_START, 9, 10), ":", 
                                  substr(TIMESTAMP_START, 11, 12), ":", 
                                  "00", 
-                                 sep = ""))) %>%  # convert from yyymmddhhmmss to yyyy-mm-dd hh:mm:ss format
+                                 sep = "")))  # convert from yyymmddhhmmss to yyyy-mm-dd hh:mm:ss format
+Flux.raw <- Flux.raw %>% 
   mutate_at(names(Flux.raw[, -length(names(Flux.raw))]), as.numeric)  # convert everything but timestamp to numeric
 
 # now merge them all together
@@ -127,25 +127,24 @@ write.csv(All_Data.raw, "BBSF_2019_All_Weather.csv")
 # in writing this code, I realized that there are several things that I really didn't need to do,
 # but they don't really screw anything up, so if anything seems redudant here, that's because it is.
 
-All_Data.raw <- read.csv("BBSF_2019_All_Weather.csv")
-
 # Take columns from All_Data.raw and put them into individual vectors
 Year = year(All_Data.raw$TIMESTAMP)
 DOY = yday(All_Data.raw$TIMESTAMP)
 TIMESTAMP = All_Data.raw$TIMESTAMP
 AirTemp_C <- All_Data.raw$T_SONIC_1_1_1
 
-AirTemp.Plot <- ggplot() + geom_line(mapping = aes(x=TIMESTAMP, y=AirTemp_C))
-# AirTemp.Plot
+AirTemp.Plot <- ggplot() + 
+  geom_line(mapping = aes(x=TIMESTAMP, y=AirTemp_C))
+#AirTemp.Plot
 
 RH_fraction <- All_Data.raw$RH_1_1_1/100
 Vap_Press_kPa <- RH_fraction*0.6108*exp(17.27*T/(T + 237.3))
 Vap_Press.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=Vap_Press_kPa), size = 0.1)
 # Vap_Press.Plot
 
-Qpar <- All_Data.raw$PAR_dn_Avg  # incoming PAR
+Qpar <- All_Data.raw$PPFD_IN  # incoming PAR
 Qpar.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=Qpar), size=0.1)
-# Qpar.Plot
+Qpar.Plot
 
 WindSpeed_m_s <- All_Data.raw$WS_1_1_1
 WS.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=WindSpeed_m_s), size = 0.1)
@@ -190,7 +189,7 @@ BaPress.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=BaPress_kPa))
 
 CO2_atm <- All_Data.raw$CO2_1_1_1
 CO2.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=CO2_atm))
-# CO2.Plot
+CO2.Plot
 
 T_canopy <- All_Data.raw$T_CANOPY_1_1_1
 T_can.Plot <- ggplot() + geom_point(aes(x=TIMESTAMP, y=T_canopy))

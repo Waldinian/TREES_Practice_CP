@@ -1,7 +1,7 @@
-2750.0  altitude, m@CPk
-35.818  latitude
--106.118    longitude
-7.0 z_ref, m 
+2150.0	altitude, m@ChEAS
+35.818	latitude
+-106.305	longitude
+6.0	z_ref, m 
 2.35 20.0	lai, single sided
 3.0 0.5 5.5	canopy_height, m
 2.35 4.5 lai_at_full_canopy_height
